@@ -28,7 +28,7 @@ public class DBExecutor {
         try {
             System.out.println(config.getServerName());
             ds.setServerName(config.getServerName());
-            //ds.setInstanceName(config.getInstanceName());
+            ds.setInstanceName(config.getInstanceName());
             ds.setDatabaseName(config.getDatabaseName());
             ds.setUser(config.getUserName());
             ds.setPassword(config.getPassword());
@@ -51,7 +51,11 @@ public class DBExecutor {
         return null;
     }
     
-    public void executeProc(String procName, SQLParameter... params){
+    /**
+     Ako je poslana converterMethod onda znači da želiš stvoriti konkretne objekte od rezultata queryja,
+     * tj. napravio si SELECT, inače želiš odraditi neku drugu operaciju na bazi.
+     */
+    public <T> Object executeProc(String procName,Function<Object[],T> converterMethod , SQLParameter... params){
         String call = "{ CALL " + procName;
         
         if (params.length > 0) {
@@ -65,6 +69,7 @@ public class DBExecutor {
             }
             
             paramDefinitions += ")";
+            call += paramDefinitions;
         }
         
         call += " }";
@@ -75,15 +80,34 @@ public class DBExecutor {
             for (int i = 0; i < params.length; i++) {
                 SQLParameter parameter = params[i];
                 if (!parameter.getIsOutputParameter()) {
-                    st.setObject(i+1, params[i].getValue());
+                    st.setObject(i+1, parameter.getValue());
                 }
                 else{
                     st.registerOutParameter(i+1, Types.OTHER);
                 }
             }
             
+            if (converterMethod != null) {
+                return getResults(st.executeQuery(), converterMethod);
+            }
+            else{
+                int changed = st.executeUpdate();
+                for (int i = 0; i < params.length; i++) {
+                    SQLParameter param = params[i];
+                    
+                    if (param.getIsOutputParameter()) {
+                        param.setValue(i+1);
+                    }
+                }
+                System.out.println(changed);
+                return st.executeUpdate();
+            }
+           
+            
         } catch (Exception e) {
+            e.printStackTrace();
         }
+        return null;
     }
 
     private <T> List<T> getResults(ResultSet rs, Function<Object[], T> converterMethod) throws SQLException {
@@ -102,7 +126,5 @@ public class DBExecutor {
             return result;
     }
 
-    
-    
     
 }
