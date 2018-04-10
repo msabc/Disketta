@@ -13,7 +13,7 @@ public class SQLParameter<T> {
     
     private boolean isOutputParameter;
     private T value;
-    private Integer ordinalNumber;
+    //private Integer ordinalNumber;
 
     public SQLParameter(boolean isOutputParameter, T value) {
         this.isOutputParameter = isOutputParameter;
